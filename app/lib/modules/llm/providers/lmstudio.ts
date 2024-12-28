@@ -1,20 +1,26 @@
 import { BaseProvider } from '~/lib/modules/llm/base-provider';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
-import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModelV1 } from 'ai';
 
 export default class LMStudioProvider extends BaseProvider {
   name = 'LMStudio';
-  getApiKeyLink = 'https://lmstudio.ai/';
+  getApiKeyLink = 'http://127.0.0.1:1234/settings/tokens';
   labelForGetApiKey = 'Get LMStudio';
   icon = 'i-ph:cloud-arrow-down';
 
   config = {
-    baseUrlKey: 'LMSTUDIO_API_BASE_URL',
+    apiTokenKey: 'LMSTUDIO_API_KEY',
   };
 
-  staticModels: ModelInfo[] = [];
+  staticModels: ModelInfo[] = [
+    {
+      name: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+      label: 'Qwen2.5-Coder-32B-Instruct (LMStudio)',
+      provider: 'LMStudio',
+      maxTokenAllowed: 8000,
+    },
+  ];
 
   async getDynamicModels(
     apiKeys?: Record<string, string>,
@@ -49,25 +55,37 @@ export default class LMStudioProvider extends BaseProvider {
       return [];
     }
   }
-  getModelInstance: (options: {
+
+  getModelInstance(options: {
     model: string;
     serverEnv: Env;
     apiKeys?: Record<string, string>;
     providerSettings?: Record<string, IProviderSetting>;
-  }) => LanguageModelV1 = (options) => {
-    const { apiKeys, providerSettings, serverEnv, model } = options;
-    const { baseUrl } = this.getProviderBaseUrlAndKey({
+  }): LanguageModelV1 {
+    const { model, serverEnv, apiKeys, providerSettings } = options;
+
+    const { apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
-      providerSettings,
+      providerSettings: providerSettings?.[this.name],
       serverEnv: serverEnv as any,
-      defaultBaseUrlKey: 'OLLAMA_API_BASE_URL',
-      defaultApiTokenKey: '',
-    });
-    const lmstudio = createOpenAI({
-      baseUrl: `${baseUrl}/v1`,
-      apiKey: '',
+      defaultBaseUrlKey: 'LMSTUDIO_API_BASE_URL',
+      defaultApiTokenKey: 'LMSTUDIO_API_KEY',
     });
 
-    return lmstudio(model);
-  };
+    if (!apiKey) {
+      throw new Error(`Missing API key for ${this.name} provider`);
+    }
+
+    // Utilisez une approche alternative pour créer une instance de modèle
+    const lmstudio = {
+      baseURL: 'http://127.0.0.1:1234/v1/',
+      apiKey,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://localhost:5173',
+      },
+      model,
+    };
+
+    return lmstudio as unknown as LanguageModelV1;
+  }
 }

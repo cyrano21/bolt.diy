@@ -44,7 +44,7 @@ export const ModelSelector = ({
 
   if (providerList.length === 0) {
     return (
-      <div className="mb-2 p-4 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary">
+      <div className="mb-2 p-4 rounded-lg border">
         <p className="text-center">
           No providers are currently enabled. Please enable at least one provider in the settings to start using the
           chat.
@@ -70,7 +70,7 @@ export const ModelSelector = ({
             setModel(firstModel.name);
           }
         }}
-        className="flex-1 p-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus transition-all"
+        className="flex-1 p-2 rounded-lg border"
       >
         {providerList.map((provider: ProviderInfo) => (
           <option key={provider.name} value={provider.name}>
@@ -82,12 +82,12 @@ export const ModelSelector = ({
         key={provider?.name}
         value={model}
         onChange={(e) => setModel?.(e.target.value)}
-        className="flex-1 p-2 rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-prompt-background text-bolt-elements-textPrimary focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus transition-all lg:max-w-[70%]"
+        className="flex-1 p-2 rounded-lg border lg:max-w-[70%]"
       >
         {[...modelList]
           .filter((e) => e.provider == provider?.name && e.name)
           .map((modelOption, index) => (
-            <option key={index} value={modelOption.name}>
+            <option key={`${modelOption.name}-${index}`} value={modelOption.name}>
               {modelOption.label}
             </option>
           ))}
