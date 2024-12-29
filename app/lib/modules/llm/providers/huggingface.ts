@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { FormData } from 'formdata-node'; // Compatible avec ESM
 import { BaseProvider } from '~/lib/modules/llm/base-provider';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
@@ -12,8 +14,8 @@ export default class HuggingFaceProvider extends BaseProvider {
     apiTokenKey: 'HuggingFace_API_KEY',
   };
 
+  // Liste des modèles supportés
   staticModels: ModelInfo[] = [
-    // Code Models
     {
       name: 'Qwen/Qwen2.5-Coder-32B-Instruct',
       label: 'Qwen2.5-Coder-32B-Instruct (HuggingFace)',
@@ -27,109 +29,34 @@ export default class HuggingFaceProvider extends BaseProvider {
       maxTokenAllowed: 8000,
     },
     {
-      name: 'bigcode/starcoder2-15b-instruct-v0.1',
-      label: 'Starcoder2-15B-Instruct-v0.1 (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'Qwen/QVQ-72B-Preview',
-      label: 'QVQ-72B-Preview (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'distributed/optimized-gpt2-2b',
-      label: 'Optimized-GPT2-2B (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-
-    // Instruction Models
-    {
       name: 'meta-llama/Llama-3.1-70B-Instruct',
       label: 'Llama-3.1-70B-Instruct (HuggingFace)',
       provider: 'HuggingFace',
       maxTokenAllowed: 8000,
     },
     {
-      name: 'meta-llama/Llama-3.1-405B',
-      label: 'Llama-3.1-405B (HuggingFace)',
+      name: 'bigcode/starcoder2-15b-instruct-v0.1',
+      label: 'Starcoder2-15B-Instruct-v0.1 (HuggingFace)',
       provider: 'HuggingFace',
       maxTokenAllowed: 8000,
     },
     {
-      name: 'meta-llama/Llama-3.3-70B-Instruct',
-      label: 'Llama-3.3-70B-Instruct (HuggingFace)',
+      name: 'Salesforce/blip2-opt-2.7b',
+      label: 'BLIP-2 (Texte + Image) (HuggingFace)',
       provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
+      maxTokenAllowed: 5000,
     },
     {
-      name: 'abacusai/Smaug-Qwen2-72B-Instruct',
-      label: 'Smaug-Qwen2-72B-Instruct (HuggingFace)',
+      name: 'CompVis/stable-diffusion-v1-4',
+      label: 'Stable Diffusion (Image Génération) (HuggingFace)',
       provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'Qwen/Qwen2-VL-7B-Instruct',
-      label: 'Qwen2-VL-7B-Instruct (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'Qwen/Qwen2-Audio-7B-Instruct',
-      label: 'Qwen2-Audio-7B-Instruct (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-
-    // Multimodal Models
-    {
-      name: 'multimodal/gpt-4-vision',
-      label: 'GPT-4 Vision (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'reaction/gpt-4-reaction',
-      label: 'GPT-4 Reaction (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'vision/gpt-4-vision',
-      label: 'GPT-4 Vision (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'stable-diffusion-v1-5/stable-diffusion-v1-5',
-      label: 'Stable-Diffusion-v1-5 (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'stabilityai/stable-video-diffusion-img2vid-xt',
-      label: 'Stable-Video-Diffusion-Img2Vid-XT (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-    {
-      name: 'ByteDance/AnimateDiff-Lightning',
-      label: 'AnimateDiff-Lightning (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
-    },
-
-    // QA Models
-    {
-      name: 'deepset/roberta-base-squad2',
-      label: 'Roberta-Base-Squad2 (HuggingFace)',
-      provider: 'HuggingFace',
-      maxTokenAllowed: 8000,
+      maxTokenAllowed: 0, // Pas applicable pour un modèle d’image
     },
   ];
 
+  /**
+   * Crée une instance d'un modèle sélectionné
+   */
   getModelInstance(options: {
     model: string;
     serverEnv: Env;
@@ -138,6 +65,13 @@ export default class HuggingFaceProvider extends BaseProvider {
   }): LanguageModelV1 {
     const { model, serverEnv, apiKeys, providerSettings } = options;
 
+    // Vérifie si le modèle existe dans la liste des modèles statiques
+    const modelInfo = this.staticModels.find((m) => m.name === model);
+    if (!modelInfo) {
+      throw new Error(`Modèle non supporté ou introuvable : ${model}`);
+    }
+
+    // Récupère la clé API
     const { apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
       providerSettings: providerSettings?.[this.name],
@@ -147,14 +81,62 @@ export default class HuggingFaceProvider extends BaseProvider {
     });
 
     if (!apiKey) {
-      throw new Error(`Missing API key for ${this.name} provider`);
+      throw new Error(`Clé API manquante pour le fournisseur ${this.name}`);
     }
 
+    // Crée une instance via le SDK OpenAI
     const openai = createOpenAI({
-      baseURL: 'https://api-inference.huggingface.co/models/',
+      baseURL: 'https://api-inference.huggingface.co/v1/',
       apiKey,
     });
 
     return openai(model);
+  }
+
+  /**
+   * Génère une réponse à partir d’un modèle multimodal (texte + image)
+   */
+  async generateImageWithText(
+    options: {
+      model: string;
+      prompt: string;
+      imageFile?: Buffer;
+    },
+    apiKey: string,
+  ): Promise<any> {
+    const { model, prompt, imageFile } = options;
+
+    if (!apiKey) {
+      throw new Error('Clé API Hugging Face manquante.');
+    }
+
+    if (!model) {
+      throw new Error('Le modèle Hugging Face n’a pas été spécifié.');
+    }
+
+    const formData = new FormData();
+    formData.append('inputs', JSON.stringify({ text: prompt }));
+
+    if (imageFile) {
+      formData.append('image', imageFile, { filename: 'input.png' });
+    }
+
+    try {
+      const response = await axios.post(`https://api-inference.huggingface.co/models/${model}`, formData, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          ...formData.headers,
+        },
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`Erreur de génération multimodale : ${response.status} - ${response.statusText}`);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la requête vers Hugging Face :', error.message);
+      throw new Error('Une erreur est survenue lors de l’appel à Hugging Face.');
+    }
   }
 }
